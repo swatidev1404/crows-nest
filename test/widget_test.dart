@@ -1,0 +1,9 @@
+// Placeholder test file - app tests not yet implemented.
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  testWidgets('Placeholder test', (WidgetTester tester) async {
+    // TODO: add real widget tests
+    expect(true, isTrue);
+  });
+}
