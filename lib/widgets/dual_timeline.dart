@@ -64,7 +64,7 @@ class _DualTimelineState extends State<DualTimeline> {
             children: [
               _buildBackgroundLines(),
               _buildCenterAxis(),
-              _buildEntries(context),
+              Positioned.fill(child: _buildEntries(context)),
               _buildCurrentTimeLine(),
             ],
           ),
