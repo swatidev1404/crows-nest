@@ -323,4 +323,36 @@ class DatabaseService {
     final db = await database;
     await db.delete('task_blueprints', where: 'id = ?', whereArgs: [id]);
   }
+
+  // Month & Day Aggregations for Calendar
+  Future<Set<String>> getChartedDatesInMonth(int year, int month) async {
+    final db = await database;
+    final m = month.toString().padLeft(2, '0');
+    final pattern = '\-\%';
+    final maps = await db.query(
+      'day_weather',
+      columns: ['date'],
+      where: 'date LIKE ?',
+      whereArgs: [pattern],
+    );
+    return maps.map((row) => (row['date'] as String).split('T')[0]).toSet();
+  }
+
+  Future<Map<String, int>> getBlockCountsByDateInMonth(int year, int month) async {
+    final db = await database;
+    final m = month.toString().padLeft(2, '0');
+    final pattern = '\-\%';
+    final maps = await db.query(
+      'blocks',
+      columns: ['date'],
+      where: 'date LIKE ?',
+      whereArgs: [pattern],
+    );
+    final Map<String, int> counts = {};
+    for (var row in maps) {
+      final dateStr = (row['date'] as String).split('T')[0];
+      counts[dateStr] = (counts[dateStr] ?? 0) + 1;
+    }
+    return counts;
+  }
 }

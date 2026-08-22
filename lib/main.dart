@@ -6,6 +6,7 @@ import 'package:crows_nest/screens/home_screen.dart';
 import 'package:crows_nest/providers/calendar_provider.dart';
 import 'package:crows_nest/screens/blueprint_manager_screen.dart';
 import 'package:crows_nest/screens/settings_screen.dart';
+import 'package:crows_nest/screens/calendar_screen.dart';
 
 void main() {
   runApp(
@@ -37,7 +38,7 @@ final GoRouter _router = GoRouter(
         ),
         GoRoute(
           path: '/calendar',
-          builder: (context, state) => const Center(child: Text('Calendar Screen')),
+          builder: (context, state) => const CalendarScreen(),
         ),
         GoRoute(
           path: '/blocks',
