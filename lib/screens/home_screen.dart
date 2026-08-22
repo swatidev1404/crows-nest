@@ -1,404 +1,413 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/calendar_entry.dart';
-import '../models/block.dart';
-import '../providers/block_provider.dart';
-import '../providers/calendar_provider.dart';
-import '../widgets/app_drawer.dart';
-import '../widgets/dual_timeline.dart';
+import 'package:provider/provider.dart';
+import 'package:crows_nest/providers/calendar_provider.dart';
+import 'package:crows_nest/models/block.dart' as model;
+import 'package:crows_nest/models/task.dart';
+import 'package:crows_nest/models/execution_session.dart';
+import 'package:crows_nest/screens/add_entry_dialog.dart';
+import 'package:crows_nest/screens/add_task_dialog.dart';
+import 'package:crows_nest/screens/weather_report_screen.dart';
+import 'package:crows_nest/screens/block_details_dialog.dart';
+import 'package:intl/intl.dart';
+import 'dart:async';
 
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+const double hourHeight = 80.0;
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final entries = ref.watch(calendarProvider);
-    final theme = Theme.of(context);
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Crow\'s Nest', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.calendar_today), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
-        ],
-      ),
-      drawer: const AppDrawer(),
-      body: Column(
-        children: [
-          _buildHeader(context, ref, theme),
-          _buildColumnLabels(theme),
-          Container(
-            height: MediaQuery.of(context).size.height * 0.45,
-            margin: const EdgeInsets.symmetric(horizontal: 8.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-              ],
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: DualTimeline(
-                entries: entries,
-                onEntryTap: (entry) => _showEntryDetailsDialog(context, ref, entry),
-                onEmptyTap: () => _showScheduleBlockDialog(context, ref),
-              ),
-            ),
-          ),
-          const Spacer(),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddOptions(context, ref),
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
+class _HomeScreenState extends State<HomeScreen> {
+  late ScrollController _scrollController;
+  Timer? _timer;
 
-  Widget _buildHeader(BuildContext context, WidgetRef ref, ThemeData theme) {
-    final selectedDate = ref.watch(selectedDateProvider);
-    final now = DateTime.now();
-    final isToday = selectedDate.year == now.year && selectedDate.month == now.month && selectedDate.day == now.day;
+  @override
+  void initState() {
+    super.initState();
     
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final dateStr = '${months[selectedDate.month - 1]} ${selectedDate.day}, ${selectedDate.year}';
-    final dayStr = weekdays[selectedDate.weekday - 1];
+    // Calculate initial scroll position immediately so it's ready when the calendar renders
+    final now = DateTime.now();
+    final offset = (now.hour * hourHeight) + (now.minute / 60 * hourHeight);
+    
+    // Set target to 2.5 hours before current time to center it lower on the screen
+    double initialTarget = offset - (2.5 * hourHeight);
+    if (initialTarget < 0) initialTarget = 0;
+    
+    _scrollController = ScrollController(initialScrollOffset: initialTarget);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
-                ),
-                child: Icon(Icons.calendar_month, color: theme.colorScheme.primary),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(dateStr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(dayStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                _buildToggleButton('◀ Past', isActive: !isToday && selectedDate.isBefore(now), theme: theme, onTap: () {
-                  ref.read(selectedDateProvider.notifier).updateDate(selectedDate.subtract(const Duration(days: 1)));
-                }),
-                _buildToggleButton('Today', isActive: isToday, theme: theme, onTap: () {
-                  ref.read(selectedDateProvider.notifier).updateDate(DateTime.now());
-                }),
-                _buildToggleButton('Next ▶', isActive: !isToday && selectedDate.isAfter(now), theme: theme, onTap: () {
-                  ref.read(selectedDateProvider.notifier).updateDate(selectedDate.add(const Duration(days: 1)));
-                }),
-                _buildToggleButton('Full Day', isActive: false, theme: theme, onTap: () {}),
-              ],
-            ),
-          )
-        ],
-      ),
+    // Redraw every minute so active execution blocks expand
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToCurrentTime() {
+    final now = DateTime.now();
+    final offset = (now.hour * hourHeight) + (now.minute / 60 * hourHeight);
+    
+    // Scroll so that the top of the view is 2.5 hours before the current time
+    double target = offset - (2.5 * hourHeight);
+    
+    // Prevent scrolling past midnight (top of the calendar)
+    if (target < 0) target = 0;
+
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
     );
   }
 
-  Widget _buildToggleButton(String text, {required bool isActive, required ThemeData theme, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isActive ? theme.colorScheme.primary : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isActive ? Colors.white : Colors.grey[700],
-          fontSize: 10,
-          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-    ));
-  }
-
-  Widget _buildColumnLabels(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Expanded(child: Center(child: Text('PLANNED', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12)))),
-          const SizedBox(width: 60, child: Center(child: Text('TIME', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 10)))),
-          const Expanded(child: Center(child: Text('EXECUTED', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)))),
-        ],
-      ),
-    );
-  }
-
-  void _showEntryDetailsDialog(BuildContext context, WidgetRef ref, CalendarEntry entry) {
-    showModalBottomSheet(
+  void _showAddEntryDialog(BuildContext context, CalendarProvider provider) {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            final currentEntry = ref.watch(calendarProvider).firstWhere((e) => e.id == entry.id, orElse: () => entry);
-            
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(currentEntry.blockName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      children: currentEntry.taskCompletions.map((tc) {
-                        final taskTitle = _getTaskTitle(ref, currentEntry.blockId, tc.taskId);
-                        return CheckboxListTile(
-                          title: Text(taskTitle, style: TextStyle(
-                            decoration: tc.isCompleted ? TextDecoration.lineThrough : null,
-                            color: tc.isCompleted ? Colors.grey : null,
-                          )),
-                          value: tc.isCompleted,
-                          onChanged: (val) {
-                            final newTcs = currentEntry.taskCompletions.map((t) => t.taskId == tc.taskId ? t.copyWith(isCompleted: val) : t).toList();
-                            ref.read(calendarProvider.notifier).updateEntry(currentEntry.copyWith(taskCompletions: newTcs));
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          dense: true,
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildActionButtons(context, ref, currentEntry),
-                ],
-              ),
-            );
+        return AddEntryDialog(
+          provider: provider,
+          currentDate: provider.currentDate,
+        );
+      },
+    );
+  }
+
+  void _showAddTaskDialog(BuildContext context, CalendarProvider provider, {int? initialBlockId}) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AddTaskDialog(
+          blocks: provider.blocks,
+          initialBlockId: initialBlockId,
+          onAdd: (task) {
+            provider.addTask(task);
           },
         );
-      }
+      },
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, WidgetRef ref, CalendarEntry entry) {
-    if (entry.status == EntryStatus.notStarted) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () {
-            final now = DateTime.now();
-            ref.read(calendarProvider.notifier).updateEntry(entry.copyWith(
-              status: EntryStatus.inProgress,
-              actualStartMinutes: now.hour * 60 + now.minute,
-            ));
-            Navigator.pop(context);
-          },
-          child: const Text('Start Block Now'),
-        ),
-      );
-    }
-    
-    if (entry.status == EntryStatus.inProgress) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-          onPressed: () {
-            final now = DateTime.now();
-            ref.read(calendarProvider.notifier).updateEntry(entry.copyWith(
-              status: EntryStatus.completed,
-              actualEndMinutes: now.hour * 60 + now.minute,
-            ));
-            Navigator.pop(context);
-          },
-          child: const Text('Complete Block'),
-        ),
-      );
-    }
-    
-    return Row(
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<CalendarProvider>(
+      builder: (context, provider, child) {
+        if (!provider.isDayCharted) {
+          return const WeatherReportScreen();
+        }
+
+        return Scaffold(
+          body: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: SizedBox(
+                    height: 24 * hourHeight,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTimeGutter(),
+                        const VerticalDivider(width: 1, thickness: 1),
+                        Expanded(child: _buildColumn(provider, true)),
+                        const VerticalDivider(width: 1, thickness: 1),
+                        Expanded(child: _buildColumn(provider, false)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              _buildInbox(provider),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _showAddEntryDialog(context, provider),
+            child: const Icon(Icons.add),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTimeGutter() {
+    return SizedBox(
+      width: 60,
+      child: Stack(
+        children: List.generate(24, (index) {
+          final time = DateTime(2020, 1, 1, index);
+          return Positioned(
+            top: index * hourHeight,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: hourHeight,
+              alignment: Alignment.topRight,
+              padding: const EdgeInsets.only(right: 8.0, top: 8.0),
+              child: Text(
+                DateFormat('ha').format(time).toLowerCase(),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildColumn(CalendarProvider provider, bool isPlan) {
+    return Stack(
       children: [
-        const Text('Completed 🎉', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-        const Spacer(),
-        TextButton(
-          onPressed: () {
-            ref.read(calendarProvider.notifier).deleteEntry(entry.id);
-            Navigator.pop(context);
-          },
-          child: const Text('Delete', style: TextStyle(color: Colors.red)),
-        )
+        // Background grid lines
+        ...List.generate(24, (index) {
+          return Positioned(
+            top: index * hourHeight,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: hourHeight,
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Colors.grey.shade300, width: 0.5),
+                ),
+              ),
+            ),
+          );
+        }),
+        // Column header
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            color: Colors.white.withOpacity(0.8),
+            child: Text(
+              isPlan ? 'Plan' : 'Execution',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
+            ),
+          ),
+        ),
+        // Render blocks
+        if (isPlan)
+          ...provider.blocks.map((block) {
+            final startHour = block.startTime.hour + (block.startTime.minute / 60.0);
+            final endHour = block.endTime.hour + (block.endTime.minute / 60.0);
+            final duration = endHour - startHour;
+            return Positioned(
+              top: startHour * hourHeight,
+              left: 4,
+              right: 4,
+              height: duration * hourHeight,
+              child: _buildPlanBlockWidget(block, provider),
+            );
+          }).toList()
+        else
+          ...provider.executionSessions.map((session) {
+            final block = provider.blocks.firstWhere(
+              (b) => b.id == session.blockId,
+              orElse: () => model.Block(
+                title: 'Unknown',
+                category: 'unknown',
+                date: DateTime.now(),
+                startTime: DateTime.now(),
+                endTime: DateTime.now(),
+                colorValue: Colors.grey.value,
+              ),
+            );
+            final startHour = session.startTime.hour + (session.startTime.minute / 60.0);
+            final end = session.endTime ?? DateTime.now();
+            final endHour = end.hour + (end.minute / 60.0);
+            double duration = endHour - startHour;
+            if (duration < 0.25) duration = 0.25; // min height for visibility
+            
+            return Positioned(
+              top: startHour * hourHeight,
+              left: 4,
+              right: 4,
+              height: duration * hourHeight,
+              child: _buildExecutionSessionWidget(session, block),
+            );
+          }).toList(),
       ],
     );
   }
 
-  String _getTaskTitle(WidgetRef ref, String blockId, String taskId) {
-    final blocks = ref.read(blocksProvider).blocks;
-    final block = blocks.where((b) => b.id == blockId).firstOrNull;
-    if (block == null) return 'Unknown Task';
-    final task = block.tasks.where((t) => t.id == taskId).firstOrNull;
-    return task?.title ?? 'Unknown Task';
-  }
-
-  void _showAddOptions(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
-              title: const Text('Schedule a Block'),
-              subtitle: const Text('Add a block to today\'s timeline'),
-              onTap: () {
-                Navigator.pop(context);
-                _showScheduleBlockDialog(context, ref);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.add_task, color: Theme.of(context).colorScheme.primary),
-              title: const Text('Add Task'),
-              subtitle: const Text('Quickly save a task to your Inbox'),
-              onTap: () {
-                Navigator.pop(context);
-                _showQuickCaptureDialog(context, ref);
-              },
-            ),
-          ],
+  Widget _buildPlanBlockWidget(model.Block block, CalendarProvider provider) {
+    final isActive = provider.isBlockActive(block.id!);
+    
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (context) => BlockDetailsDialog(block: block, provider: provider),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 2),
+        decoration: BoxDecoration(
+          color: Color(block.colorValue).withOpacity(0.2),
+          border: Border(left: BorderSide(color: Color(block.colorValue), width: 4)),
+          borderRadius: BorderRadius.circular(4),
         ),
-      ),
-    );
-  }
-
-  void _showQuickCaptureDialog(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Quick Capture'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'What needs to be done?'),
-          autofocus: true,
-          onSubmitted: (title) {
-            if (title.trim().isNotEmpty) {
-              ref.read(blocksProvider.notifier).addInboxTask(title.trim());
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Inbox')));
-            }
-          },
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              final title = controller.text.trim();
-              if (title.isNotEmpty) {
-                ref.read(blocksProvider.notifier).addInboxTask(title);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Inbox')));
-              }
-            },
-            child: const Text('Save'),
+      padding: const EdgeInsets.all(4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  block.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              InkResponse(
+                radius: 16,
+                onTap: () {
+                  if (isActive) {
+                    provider.stopBlock(block);
+                  } else {
+                    provider.startBlock(block);
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Icon(
+                    isActive ? Icons.pause_circle : Icons.play_circle,
+                    size: 20,
+                    color: Color(block.colorValue),
+                  ),
+                ),
+              )
+            ],
           ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              children: block.tasks.where((t) => t.planned).map((task) {
+                return Row(
+                  children: [
+                    InkWell(
+                      onTap: () => provider.toggleTaskPlanCompletion(task),
+                      child: Icon(
+                        task.completedPlan ? Icons.check_circle : Icons.radio_button_unchecked,
+                        size: 12,
+                        color: Color(block.colorValue),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        task.title,
+                        style: TextStyle(
+                          fontSize: 10,
+                          decoration: task.completedPlan ? TextDecoration.lineThrough : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildExecutionSessionWidget(ExecutionSession session, model.Block block) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 2),
+      decoration: BoxDecoration(
+        color: Color(block.colorValue).withOpacity(0.4),
+        border: Border(left: BorderSide(color: Color(block.colorValue), width: 4)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      padding: const EdgeInsets.all(4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            block.title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+          if (session.endTime == null)
+            const Text(
+              "In Progress...",
+              style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic),
+            ),
         ],
       ),
     );
   }
 
-  void _showScheduleBlockDialog(BuildContext context, WidgetRef ref) {
-    final blocks = ref.read(blocksProvider).blocks;
-    if (blocks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Create a Block in the library first!')));
-      return;
-    }
-
-    Block? selectedBlock = blocks.first;
-    TimeOfDay selectedTime = TimeOfDay.now();
-    int durationMinutes = 60;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: const Text('Schedule Block'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
+  Widget _buildInbox(CalendarProvider provider) {
+    return Container(
+      height: 150,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        border: Border(top: BorderSide(color: Colors.grey.shade300, width: 1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                DropdownButtonFormField<Block>(
-                  initialValue: selectedBlock,
-                  items: blocks.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(),
-                  onChanged: (b) => setState(() => selectedBlock = b),
-                  decoration: const InputDecoration(labelText: 'Select Block'),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: const Text('Start Time'),
-                  trailing: Text(selectedTime.format(context)),
-                  onTap: () async {
-                    final t = await showTimePicker(context: context, initialTime: selectedTime);
-                    if (t != null) setState(() => selectedTime = t);
-                  },
-                ),
-                TextFormField(
-                  initialValue: durationMinutes.toString(),
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Duration (minutes)'),
-                  onChanged: (val) => durationMinutes = int.tryParse(val) ?? 60,
-                ),
+                const Text("Inbox (Standalone Tasks)", style: TextStyle(fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _showAddTaskDialog(context, provider),
+                )
               ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: () {
-                  if (selectedBlock != null) {
-                    final tcs = selectedBlock!.tasks.map((t) => TaskCompletion(taskId: t.id)).toList();
-                    final entry = CalendarEntry(
-                      blockId: selectedBlock!.id,
-                      blockName: selectedBlock!.name,
-                      date: ref.read(selectedDateStringProvider),
-                      plannedStartMinutes: selectedTime.hour * 60 + selectedTime.minute,
-                      plannedDurationMinutes: durationMinutes,
-                      taskCompletions: tcs,
-                    );
-                    ref.read(calendarProvider.notifier).addEntry(entry);
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text('Schedule'),
-              ),
-            ],
           ),
-        );
-      }
+          Expanded(
+            child: provider.standaloneTasks.isEmpty
+                ? const Center(child: Text("No tasks in inbox.", style: TextStyle(color: Colors.grey)))
+                : ListView.builder(
+                    itemCount: provider.standaloneTasks.length,
+                    itemBuilder: (context, index) {
+                      final task = provider.standaloneTasks[index];
+                      return ListTile(
+                        dense: true,
+                        leading: InkWell(
+                          onTap: () => provider.toggleTaskPlanCompletion(task),
+                          child: Icon(
+                            task.completedPlan ? Icons.check_circle : Icons.radio_button_unchecked,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        title: Text(
+                          task.title,
+                          style: TextStyle(
+                            decoration: task.completedPlan ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

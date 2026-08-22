@@ -1,74 +1,78 @@
-import 'package:uuid/uuid.dart';
-
-const _uuid = Uuid();
-
-class Task {
-  final String id;
-  final String blockId;
-  final String title;
-
-  Task({
-    String? id,
-    required this.blockId,
-    required this.title,
-  }) : id = id ?? _uuid.v4();
-
-  Task copyWith({String? blockId, String? title}) =>
-      Task(id: id, blockId: blockId ?? this.blockId, title: title ?? this.title);
-
-  Map<String, dynamic> toJson() => {'id': id, 'blockId': blockId, 'title': title};
-
-  factory Task.fromJson(Map<String, dynamic> json) => Task(
-        id: json['id'] as String,
-        blockId: json['blockId'] as String,
-        title: json['title'] as String,
-      );
-}
+import 'package:crows_nest/models/task.dart';
 
 class Block {
-  final String id;
-  final String name;
-  final String? description;
-  final String? icon;
+  final int? id;
+  final String title;
+  final String category;
+  final DateTime date;
+  final DateTime startTime;
+  final DateTime endTime;
+  final int colorValue; // store Color.value
+  final String? recurrence;
+
+  // Not stored in the Block table directly, populated via join
   final List<Task> tasks;
 
   Block({
-    String? id,
-    required this.name,
-    this.description,
-    this.icon,
+    this.id,
+    required this.title,
+    required this.category,
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    required this.colorValue,
+    this.recurrence,
     this.tasks = const [],
-  }) : id = id ?? _uuid.v4();
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'category': category,
+      'date': date.toIso8601String(),
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime.toIso8601String(),
+      'colorValue': colorValue,
+      'recurrence': recurrence,
+    };
+  }
+
+  factory Block.fromMap(Map<String, dynamic> map, {List<Task>? tasks}) {
+    return Block(
+      id: map['id'],
+      title: map['title'],
+      category: map['category'],
+      date: DateTime.parse(map['date']),
+      startTime: DateTime.parse(map['startTime']),
+      endTime: DateTime.parse(map['endTime']),
+      colorValue: map['colorValue'],
+      recurrence: map['recurrence'],
+      tasks: tasks ?? [],
+    );
+  }
 
   Block copyWith({
-    String? name,
-    String? description,
-    String? icon,
+    int? id,
+    String? title,
+    String? category,
+    DateTime? date,
+    DateTime? startTime,
+    DateTime? endTime,
+    int? colorValue,
+    String? recurrence,
     List<Task>? tasks,
-  }) =>
-      Block(
-        id: id,
-        name: name ?? this.name,
-        description: description ?? this.description,
-        icon: icon ?? this.icon,
-        tasks: tasks ?? this.tasks,
-      );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'description': description,
-        'icon': icon,
-        'tasks': tasks.map((t) => t.toJson()).toList(),
-      };
-
-  factory Block.fromJson(Map<String, dynamic> json) => Block(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        description: json['description'] as String?,
-        icon: json['icon'] as String?,
-        tasks: (json['tasks'] as List<dynamic>? ?? [])
-            .map((t) => Task.fromJson(t as Map<String, dynamic>))
-            .toList(),
-      );
+  }) {
+    return Block(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      date: date ?? this.date,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      colorValue: colorValue ?? this.colorValue,
+      recurrence: recurrence ?? this.recurrence,
+      tasks: tasks ?? this.tasks,
+    );
+  }
 }
