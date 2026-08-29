@@ -14,6 +14,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    buildFeatures {
+        resValues = true
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.crows_nest"
@@ -23,6 +27,21 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    flavorDimensions += "environment"
+
+    productFlavors {
+        create("personal") {
+            dimension = "environment"
+            applicationId = "com.example.crows_nest"
+            resValue("string", "app_name", "Crows Nest")
+        }
+        create("lab") {
+            dimension = "environment"
+            applicationId = "com.example.crows_nest.lab"
+            resValue("string", "app_name", "Crows Nest Lab")
+        }
     }
 
     buildTypes {
