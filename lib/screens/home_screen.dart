@@ -1215,6 +1215,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   decoration: task.completedPlan ? TextDecoration.lineThrough : null,
                                 ),
                               ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 16),
+                                tooltip: 'Delete task',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => provider.deleteTask(task.id!),
+                              ),
+                              onTap: () => provider.toggleTaskPlanCompletion(task),
                             );
                           },
                         ))

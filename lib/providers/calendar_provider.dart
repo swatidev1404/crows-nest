@@ -149,6 +149,11 @@ class CalendarProvider extends ChangeNotifier {
     await _loadAllData();
   }
 
+  Future<void> deleteTask(int id) async {
+    await _db.deleteTask(id);
+    await _loadAllData();
+  }
+
   Future<void> toggleTaskPlanCompletion(Task task) async {
     final updatedTask = task.copyWith(completedPlan: !task.completedPlan);
     await _db.updateTask(updatedTask);
