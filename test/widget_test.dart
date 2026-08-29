@@ -139,13 +139,15 @@ void main() {
     expect(themeProvider.getAutoThemeForTime(DateTime(2026, 8, 28, 18, 30)), AppThemeMode.goldenDune);
     expect(themeProvider.getAutoThemeForTime(DateTime(2026, 8, 28, 22, 15)), AppThemeMode.crimsonCorsair);
 
-    // Test Solar Time of Day calculation (6-phase requested order: Nordic -> Golden -> Midnight Oceanic -> Cyber -> Crimson -> Emerald)
-    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 8, 0)), AppThemeMode.nordicLight);      // 1. Nordic (Morning)
-    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 12, 0)), AppThemeMode.goldenDune);     // 2. Golden (Midday)
-    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 16, 0)), AppThemeMode.oceanicDark);    // 3. Midnight Oceanic (Afternoon)
-    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 20, 0)), AppThemeMode.cyberTwilight);  // 4. Cyber (Twilight)
-    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 23, 30)), AppThemeMode.crimsonCorsair); // 5. Crimson (Late Night)
-    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 4, 0)), AppThemeMode.emeraldAbyss);    // 6. Emerald (Abyss)
+    // Test Solar Time of Day calculation with exact user time windows:
+    // 5am-5pm: Nordic | 5pm-7pm: Golden | 7pm-12am: Midnight | 12am-2am: Cyber | 2am-3:30am: Crimson | 3:30am-5am: Emerald
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 7, 0)), AppThemeMode.nordicLight);       // 5am - 5pm (Nordic)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 16, 30)), AppThemeMode.nordicLight);     // 5am - 5pm (Nordic)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 17, 30)), AppThemeMode.goldenDune);     // 5pm - 7pm (Golden)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 20, 0)), AppThemeMode.oceanicDark);      // 7pm - 12am (Midnight)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 1, 0)), AppThemeMode.cyberTwilight);     // 12am - 2am (Cyber)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 2, 45)), AppThemeMode.crimsonCorsair);   // 2am - 3:30am (Crimson)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 4, 15)), AppThemeMode.emeraldAbyss);     // 3:30am - 5am (Emerald)
 
     // Test cyclic toggle through all themes including autoChronometer and solarCircadian
     themeProvider.setTheme(AppThemeMode.oceanicDark);

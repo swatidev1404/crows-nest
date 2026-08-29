@@ -200,7 +200,7 @@ class SailorsAlmanacScreen extends StatelessWidget {
             tag: "Atmosphere",
             title: "Solar Tides, Chronometer & 6 Themes",
             description:
-                "Crow's Nest includes 6 crafted themes, plus 2 smart rotation modes:\n• Solar Tides ☀️: Changes across the day in your exact custom sequence: Nordic (Morning) ➔ Golden (Midday) ➔ Midnight Oceanic (Afternoon) ➔ Cyber (Twilight) ➔ Crimson (Late Night) ➔ Emerald (Abyss).\n• Chronometer Shift ⏱️: Auto-rotates through all 6 themes every 2 hours with the nautical watch!",
+                "Crow's Nest includes 6 crafted themes, plus 2 smart rotation modes:\n• Solar Tides ☀️: Follows your custom circadian clock: 5am-5pm (Nordic) ➔ 5pm-7pm (Golden) ➔ 7pm-12am (Midnight) ➔ 12am-2am (Cyber) ➔ 2am-3:30am (Crimson) ➔ 3:30am-5am (Emerald).\n• Chronometer Shift ⏱️: Auto-rotates through all 6 themes every 2 hours with the nautical watch!",
             actionButtonLabel: "Explore Themes in Settings",
             actionButtonIcon: Icons.palette_rounded,
             onAction: () => context.go('/settings'),

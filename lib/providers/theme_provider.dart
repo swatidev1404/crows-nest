@@ -78,56 +78,56 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  /// Calculates the Solar Time-of-Day theme based on user's exact requested 6-theme progression:
-  /// 1. 06:00 - 09:59: Nordic Sea Mist (Morning Daylight)
-  /// 2. 10:00 - 13:59: Golden Dune (Sunlit Midday)
-  /// 3. 14:00 - 17:59: Midnight Oceanic (Afternoon Ocean)
-  /// 4. 18:00 - 21:59: Cyber Horizon (Twilight & Neon Dusk)
-  /// 5. 22:00 - 01:59: Crimson Corsair (Late Night Crimson)
-  /// 6. 02:00 - 05:59: Emerald Abyss (Witching Hours / Deep Abyss)
+  /// Calculates the Solar Time-of-Day theme based on user's exact requested time windows:
+  /// • 05:00 - 17:00 (5 AM - 5 PM): Nordic Sea Mist
+  /// • 17:00 - 19:00 (5 PM - 7 PM): Golden Dune
+  /// • 19:00 - 00:00 (7 PM - 12 AM): Midnight Oceanic
+  /// • 00:00 - 02:00 (12 AM - 2 AM): Cyber Horizon
+  /// • 02:00 - 03:30 (2 AM - 3:30 AM): Crimson Corsair
+  /// • 03:30 - 05:00 (3:30 AM - 5 AM): Emerald Abyss
   AppThemeMode getSolarThemeForTime(DateTime time) {
-    final hour = time.hour;
+    final minuteOfDay = time.hour * 60 + time.minute;
 
-    // 06:00 - 09:59: 1. Nordic theme
-    if (hour >= 6 && hour < 10) {
+    // 05:00 (300m) to 16:59 (1019m) -> Nordic theme (5am - 5pm)
+    if (minuteOfDay >= 300 && minuteOfDay < 1020) {
       return AppThemeMode.nordicLight;
     }
-    // 10:00 - 13:59: 2. Golden theme
-    else if (hour >= 10 && hour < 14) {
+    // 17:00 (1020m) to 18:59 (1139m) -> Golden theme (5pm - 7pm)
+    else if (minuteOfDay >= 1020 && minuteOfDay < 1140) {
       return AppThemeMode.goldenDune;
     }
-    // 14:00 - 17:59: 3. Midnight Oceanic theme
-    else if (hour >= 14 && hour < 18) {
+    // 19:00 (1140m) to 23:59 (1439m) -> Midnight Oceanic theme (7pm - 12am)
+    else if (minuteOfDay >= 1140) {
       return AppThemeMode.oceanicDark;
     }
-    // 18:00 - 21:59: 4. Cyber theme
-    else if (hour >= 18 && hour < 22) {
+    // 00:00 (0m) to 01:59 (119m) -> Cyber theme (12am - 2am)
+    else if (minuteOfDay < 120) {
       return AppThemeMode.cyberTwilight;
     }
-    // 22:00 - 01:59: 5. Crimson theme
-    else if (hour >= 22 || hour < 2) {
+    // 02:00 (120m) to 03:29 (209m) -> Crimson theme (2am - 3:30am)
+    else if (minuteOfDay < 210) {
       return AppThemeMode.crimsonCorsair;
     }
-    // 02:00 - 05:59: 6. Emerald theme
+    // 03:30 (210m) to 04:59 (299m) -> Emerald theme (3:30am - 5am)
     else {
       return AppThemeMode.emeraldAbyss;
     }
   }
 
   String getSolarPhaseName(DateTime time) {
-    final hour = time.hour;
-    if (hour >= 6 && hour < 10) {
-      return 'Morning (06:00-10:00)';
-    } else if (hour >= 10 && hour < 14) {
-      return 'Midday (10:00-14:00)';
-    } else if (hour >= 14 && hour < 18) {
-      return 'Afternoon (14:00-18:00)';
-    } else if (hour >= 18 && hour < 22) {
-      return 'Twilight (18:00-22:00)';
-    } else if (hour >= 22 || hour < 2) {
-      return 'Late Night (22:00-02:00)';
+    final minuteOfDay = time.hour * 60 + time.minute;
+    if (minuteOfDay >= 300 && minuteOfDay < 1020) {
+      return 'Daylight (05:00-17:00)';
+    } else if (minuteOfDay >= 1020 && minuteOfDay < 1140) {
+      return 'Golden Sunset (17:00-19:00)';
+    } else if (minuteOfDay >= 1140) {
+      return 'Night (19:00-00:00)';
+    } else if (minuteOfDay < 120) {
+      return 'Cyber Hours (00:00-02:00)';
+    } else if (minuteOfDay < 210) {
+      return 'Crimson Watch (02:00-03:30)';
     } else {
-      return 'Abyss (02:00-06:00)';
+      return 'Emerald Abyss (03:30-05:00)';
     }
   }
 
@@ -229,7 +229,7 @@ class ThemeProvider extends ChangeNotifier {
       case AppThemeMode.autoChronometer:
         return 'Dynamic 2-hour nautical watch cycle shifting between all 6 themes automatically';
       case AppThemeMode.solarCircadian:
-        return 'Solar 6-Phase Tides: Nordic (Morning) ➔ Golden (Midday) ➔ Midnight Oceanic (Afternoon) ➔ Cyber (Twilight) ➔ Crimson (Late Night) ➔ Emerald (Abyss)';
+        return 'Solar Tides: 5am-5pm (Nordic) ➔ 5pm-7pm (Golden) ➔ 7pm-12am (Midnight) ➔ 12am-2am (Cyber) ➔ 2am-3:30am (Crimson) ➔ 3:30am-5am (Emerald)';
     }
   }
 

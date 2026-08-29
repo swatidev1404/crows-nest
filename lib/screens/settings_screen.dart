@@ -118,8 +118,8 @@ class SettingsScreen extends StatelessWidget {
               _buildThemeOptionCard(
                 context: context,
                 mode: AppThemeMode.solarCircadian,
-                title: 'Solar Tides ☀️ (Natural Time of Day)',
-                subtitle: 'Nordic (Morning) ➔ Golden (Midday) ➔ Midnight Oceanic (Afternoon) ➔ Cyber (Twilight) ➔ Crimson (Late Night) ➔ Emerald (Abyss)',
+                title: 'Solar Tides ☀️ (Custom Day Schedule)',
+                subtitle: '5am-5pm (Nordic) ➔ 5pm-7pm (Golden) ➔ 7pm-12am (Midnight) ➔ 12am-2am (Cyber) ➔ 2am-3:30am (Crimson) ➔ 3:30am-5am (Emerald)',
                 icon: Icons.wb_sunny_outlined,
                 colors: const [Color(0xFF0D9488), Color(0xFFD97706), Color(0xFF0F1E36), Color(0xFF8C52FF), Color(0xFFFF3366), Color(0xFF00F5D4)],
                 isSelected: themeProvider.currentThemeMode == AppThemeMode.solarCircadian,
