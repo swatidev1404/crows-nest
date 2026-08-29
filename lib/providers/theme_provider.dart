@@ -9,7 +9,8 @@ enum AppThemeMode {
   crimsonCorsair,
   emeraldAbyss,
   goldenDune,
-  autoChronometer, // Automatically cycles through themes every 2 hours
+  autoChronometer, // Cycles through all 6 themes every 2 hours
+  solarCircadian,  // Automatically shifts based on natural Solar Time of Day (Dawn, Daylight, Sunset, Twilight, Night, Abyss)
 }
 
 class ThemeProvider extends ChangeNotifier {
@@ -26,8 +27,9 @@ class ThemeProvider extends ChangeNotifier {
   void _startAutoShiftTimer() {
     _autoShiftTimer?.cancel();
     _autoShiftTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_currentThemeMode == AppThemeMode.autoChronometer) {
-        final currentAuto = getAutoThemeForTime(DateTime.now());
+      if (_currentThemeMode == AppThemeMode.autoChronometer ||
+          _currentThemeMode == AppThemeMode.solarCircadian) {
+        final currentAuto = activeEffectiveThemeMode;
         if (currentAuto != _lastAutoTheme) {
           _lastAutoTheme = currentAuto;
           notifyListeners();
@@ -44,10 +46,13 @@ class ThemeProvider extends ChangeNotifier {
 
   AppThemeMode get currentThemeMode => _currentThemeMode;
 
-  /// Returns the actual active theme taking into account 2-hour automatic shifts
+  /// Returns the actual active theme taking into account 2-hour automatic shifts or Solar time of day
   AppThemeMode get activeEffectiveThemeMode {
     if (_currentThemeMode == AppThemeMode.autoChronometer) {
       return getAutoThemeForTime(DateTime.now());
+    }
+    if (_currentThemeMode == AppThemeMode.solarCircadian) {
+      return getSolarThemeForTime(DateTime.now());
     }
     return _currentThemeMode;
   }
@@ -73,6 +78,59 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
+  /// Calculates the Solar Time-of-Day theme based on user's exact requested 6-theme progression:
+  /// 1. 06:00 - 09:59: Nordic Sea Mist (Morning Daylight)
+  /// 2. 10:00 - 13:59: Golden Dune (Sunlit Midday)
+  /// 3. 14:00 - 17:59: Midnight Oceanic (Afternoon Ocean)
+  /// 4. 18:00 - 21:59: Cyber Horizon (Twilight & Neon Dusk)
+  /// 5. 22:00 - 01:59: Crimson Corsair (Late Night Crimson)
+  /// 6. 02:00 - 05:59: Emerald Abyss (Witching Hours / Deep Abyss)
+  AppThemeMode getSolarThemeForTime(DateTime time) {
+    final hour = time.hour;
+
+    // 06:00 - 09:59: 1. Nordic theme
+    if (hour >= 6 && hour < 10) {
+      return AppThemeMode.nordicLight;
+    }
+    // 10:00 - 13:59: 2. Golden theme
+    else if (hour >= 10 && hour < 14) {
+      return AppThemeMode.goldenDune;
+    }
+    // 14:00 - 17:59: 3. Midnight Oceanic theme
+    else if (hour >= 14 && hour < 18) {
+      return AppThemeMode.oceanicDark;
+    }
+    // 18:00 - 21:59: 4. Cyber theme
+    else if (hour >= 18 && hour < 22) {
+      return AppThemeMode.cyberTwilight;
+    }
+    // 22:00 - 01:59: 5. Crimson theme
+    else if (hour >= 22 || hour < 2) {
+      return AppThemeMode.crimsonCorsair;
+    }
+    // 02:00 - 05:59: 6. Emerald theme
+    else {
+      return AppThemeMode.emeraldAbyss;
+    }
+  }
+
+  String getSolarPhaseName(DateTime time) {
+    final hour = time.hour;
+    if (hour >= 6 && hour < 10) {
+      return 'Morning (06:00-10:00)';
+    } else if (hour >= 10 && hour < 14) {
+      return 'Midday (10:00-14:00)';
+    } else if (hour >= 14 && hour < 18) {
+      return 'Afternoon (14:00-18:00)';
+    } else if (hour >= 18 && hour < 22) {
+      return 'Twilight (18:00-22:00)';
+    } else if (hour >= 22 || hour < 2) {
+      return 'Late Night (22:00-02:00)';
+    } else {
+      return 'Abyss (02:00-06:00)';
+    }
+  }
+
   Future<void> _loadSavedTheme() async {
     try {
       final savedTheme = await _db.getSetting('app_theme');
@@ -95,6 +153,9 @@ class ThemeProvider extends ChangeNotifier {
             break;
           case 'autoChronometer':
             _currentThemeMode = AppThemeMode.autoChronometer;
+            break;
+          case 'solarCircadian':
+            _currentThemeMode = AppThemeMode.solarCircadian;
             break;
           case 'oceanicDark':
           default:
@@ -123,6 +184,10 @@ class ThemeProvider extends ChangeNotifier {
       case AppThemeMode.autoChronometer:
         final activeName = _getThemeNameForMode(activeEffectiveThemeMode);
         return 'Chronometer Shift ($activeName)';
+      case AppThemeMode.solarCircadian:
+        final phase = getSolarPhaseName(DateTime.now());
+        final activeName = _getThemeNameForMode(activeEffectiveThemeMode);
+        return 'Solar Tides ($phase • $activeName)';
     }
   }
 
@@ -142,6 +207,8 @@ class ThemeProvider extends ChangeNotifier {
         return 'Golden Dune';
       case AppThemeMode.autoChronometer:
         return 'Chronometer Shift';
+      case AppThemeMode.solarCircadian:
+        return 'Solar Tides';
     }
   }
 
@@ -161,6 +228,8 @@ class ThemeProvider extends ChangeNotifier {
         return 'Warm sunlit ivory with desert sand & terracotta sunset accents';
       case AppThemeMode.autoChronometer:
         return 'Dynamic 2-hour nautical watch cycle shifting between all 6 themes automatically';
+      case AppThemeMode.solarCircadian:
+        return 'Solar 6-Phase Tides: Nordic (Morning) ➔ Golden (Midday) ➔ Midnight Oceanic (Afternoon) ➔ Cyber (Twilight) ➔ Crimson (Late Night) ➔ Emerald (Abyss)';
     }
   }
 
@@ -180,6 +249,8 @@ class ThemeProvider extends ChangeNotifier {
         return Icons.wb_twilight_rounded;
       case AppThemeMode.autoChronometer:
         return Icons.timelapse_rounded;
+      case AppThemeMode.solarCircadian:
+        return Icons.wb_sunny_outlined;
     }
   }
 
@@ -214,6 +285,9 @@ class ThemeProvider extends ChangeNotifier {
         case AppThemeMode.autoChronometer:
           modeStr = 'autoChronometer';
           break;
+        case AppThemeMode.solarCircadian:
+          modeStr = 'solarCircadian';
+          break;
         case AppThemeMode.oceanicDark:
           modeStr = 'oceanicDark';
           break;
@@ -243,6 +317,9 @@ class ThemeProvider extends ChangeNotifier {
         setTheme(AppThemeMode.autoChronometer);
         break;
       case AppThemeMode.autoChronometer:
+        setTheme(AppThemeMode.solarCircadian);
+        break;
+      case AppThemeMode.solarCircadian:
         setTheme(AppThemeMode.oceanicDark);
         break;
     }

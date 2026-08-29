@@ -192,15 +192,15 @@ class SailorsAlmanacScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Guide Card 5: Chronometer Shift & Themes
+          // Guide Card 5: Solar Tides, Chronometer & 6 Themes
           _buildGuideCard(
             context: context,
-            icon: Icons.timelapse_rounded,
+            icon: Icons.wb_sunny_outlined,
             accentColor: Colors.orange,
             tag: "Atmosphere",
-            title: "Chronometer Shift & 6 Themes",
+            title: "Solar Tides, Chronometer & 6 Themes",
             description:
-                "Crow's Nest includes 6 crafted themes (Midnight Oceanic, Crimson Corsair, Emerald Abyss, Cyber Horizon, Nordic Sea Mist, Golden Dune) plus 'Chronometer Shift' which auto-rotates themes every 2 hours following the nautical watch!",
+                "Crow's Nest includes 6 crafted themes, plus 2 smart rotation modes:\n• Solar Tides ☀️: Changes across the day in your exact custom sequence: Nordic (Morning) ➔ Golden (Midday) ➔ Midnight Oceanic (Afternoon) ➔ Cyber (Twilight) ➔ Crimson (Late Night) ➔ Emerald (Abyss).\n• Chronometer Shift ⏱️: Auto-rotates through all 6 themes every 2 hours with the nautical watch!",
             actionButtonLabel: "Explore Themes in Settings",
             actionButtonIcon: Icons.palette_rounded,
             onAction: () => context.go('/settings'),

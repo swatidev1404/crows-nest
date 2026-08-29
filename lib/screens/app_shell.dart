@@ -181,6 +181,38 @@ class AppShell extends StatelessWidget {
                   ],
                 ),
               ),
+              PopupMenuItem<AppThemeMode>(
+                value: AppThemeMode.solarCircadian,
+                child: Row(
+                  children: [
+                    Icon(Icons.wb_sunny_outlined, color: Colors.orange, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Solar Tides ☀️',
+                            style: TextStyle(
+                              fontWeight: themeProvider.currentThemeMode == AppThemeMode.solarCircadian
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          Text(
+                            'Natural day/night solar phases',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           IconButton(

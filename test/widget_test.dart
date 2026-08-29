@@ -139,7 +139,15 @@ void main() {
     expect(themeProvider.getAutoThemeForTime(DateTime(2026, 8, 28, 18, 30)), AppThemeMode.goldenDune);
     expect(themeProvider.getAutoThemeForTime(DateTime(2026, 8, 28, 22, 15)), AppThemeMode.crimsonCorsair);
 
-    // Test cyclic toggle through all themes including autoChronometer
+    // Test Solar Time of Day calculation (6-phase requested order: Nordic -> Golden -> Midnight Oceanic -> Cyber -> Crimson -> Emerald)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 8, 0)), AppThemeMode.nordicLight);      // 1. Nordic (Morning)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 12, 0)), AppThemeMode.goldenDune);     // 2. Golden (Midday)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 16, 0)), AppThemeMode.oceanicDark);    // 3. Midnight Oceanic (Afternoon)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 20, 0)), AppThemeMode.cyberTwilight);  // 4. Cyber (Twilight)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 23, 30)), AppThemeMode.crimsonCorsair); // 5. Crimson (Late Night)
+    expect(themeProvider.getSolarThemeForTime(DateTime(2026, 8, 28, 4, 0)), AppThemeMode.emeraldAbyss);    // 6. Emerald (Abyss)
+
+    // Test cyclic toggle through all themes including autoChronometer and solarCircadian
     themeProvider.setTheme(AppThemeMode.oceanicDark);
     themeProvider.toggleNextTheme(); // -> cyberTwilight
     expect(themeProvider.currentThemeMode, AppThemeMode.cyberTwilight);
@@ -153,6 +161,8 @@ void main() {
     expect(themeProvider.currentThemeMode, AppThemeMode.goldenDune);
     themeProvider.toggleNextTheme(); // -> autoChronometer
     expect(themeProvider.currentThemeMode, AppThemeMode.autoChronometer);
+    themeProvider.toggleNextTheme(); // -> solarCircadian
+    expect(themeProvider.currentThemeMode, AppThemeMode.solarCircadian);
     themeProvider.toggleNextTheme(); // -> oceanicDark
     expect(themeProvider.currentThemeMode, AppThemeMode.oceanicDark);
   });
