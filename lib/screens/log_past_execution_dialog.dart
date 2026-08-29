@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:crows_nest/models/block.dart' as model;
 import 'package:crows_nest/providers/calendar_provider.dart';
-import 'package:intl/intl.dart';
 
 class LogPastExecutionDialog extends StatefulWidget {
   final CalendarProvider provider;

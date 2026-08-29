@@ -164,8 +164,9 @@ class _BlockBlueprintDialogState extends State<_BlockBlueprintDialog> {
     final bp = widget.blueprint;
     _titleController = TextEditingController(text: bp?.title ?? '');
     _selectedCategory = bp?.category ?? 'Work';
-    _startTime = bp != null ? TimeOfDay(hour: bp.startHour, minute: bp.startMinute) : const TimeOfDay(hour: 9, minute: 0);
-    _endTime = bp != null ? TimeOfDay(hour: bp.endHour, minute: bp.endMinute) : const TimeOfDay(hour: 10, minute: 0);
+    final now = TimeOfDay.now();
+    _startTime = bp != null ? TimeOfDay(hour: bp.startHour, minute: bp.startMinute) : now;
+    _endTime = bp != null ? TimeOfDay(hour: bp.endHour, minute: bp.endMinute) : TimeOfDay(hour: (now.hour + 1) % 24, minute: now.minute);
     _selectedColor = bp != null ? Color(bp.colorValue) : _palette.first;
     _requiredTagIds = bp?.requiredTagIds.toList() ?? [];
     _excludedTagIds = bp?.excludedTagIds.toList() ?? [];

@@ -22,8 +22,8 @@ class _AddBlockDialogState extends State<AddBlockDialog> {
   
   String _selectedCategory = 'Work';
   String? _selectedRecurrence;
-  TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 10, minute: 0);
+  late TimeOfDay _startTime;
+  late TimeOfDay _endTime;
   
   static const List<Color> _palette = [
     Colors.blue,
@@ -36,6 +36,14 @@ class _AddBlockDialogState extends State<AddBlockDialog> {
     Colors.indigo,
   ];
   Color _selectedColor = _palette.first;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = TimeOfDay.now();
+    _startTime = now;
+    _endTime = TimeOfDay(hour: (now.hour + 1) % 24, minute: now.minute);
+  }
 
   @override
   void dispose() {

@@ -66,14 +66,22 @@ class _BlockFormState extends State<_BlockForm> {
   
   String _selectedCategory = 'Work';
   String? _selectedRecurrence;
-  TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 10, minute: 0);
+  late TimeOfDay _startTime;
+  late TimeOfDay _endTime;
   
   static const List<Color> _palette = [
     Colors.blue, Colors.red, Colors.green, Colors.amber,
     Colors.purple, Colors.teal, Colors.cyan, Colors.indigo,
   ];
   Color _selectedColor = _palette.first;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = TimeOfDay.now();
+    _startTime = now;
+    _endTime = TimeOfDay(hour: (now.hour + 1) % 24, minute: now.minute);
+  }
 
   @override
   void dispose() {
@@ -246,6 +254,21 @@ class _TaskFormState extends State<_TaskForm> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   int? _selectedBlockId;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final nowMinutes = now.hour * 60 + now.minute;
+    for (var b in widget.provider.blocks) {
+      final startMinutes = b.startTime.hour * 60 + b.startTime.minute;
+      final endMinutes = b.endTime.hour * 60 + b.endTime.minute;
+      if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+        _selectedBlockId = b.id;
+        break;
+      }
+    }
+  }
 
   @override
   void dispose() {

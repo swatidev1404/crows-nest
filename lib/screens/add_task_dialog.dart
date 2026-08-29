@@ -30,6 +30,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     if (widget.initialBlockId != null && 
         widget.blocks.any((b) => b.id == widget.initialBlockId)) {
       _selectedBlockId = widget.initialBlockId;
+    } else {
+      final now = DateTime.now();
+      final nowMinutes = now.hour * 60 + now.minute;
+      for (var b in widget.blocks) {
+        final startMinutes = b.startTime.hour * 60 + b.startTime.minute;
+        final endMinutes = b.endTime.hour * 60 + b.endTime.minute;
+        if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+          _selectedBlockId = b.id;
+          break;
+        }
+      }
     }
   }
 

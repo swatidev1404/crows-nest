@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:crows_nest/models/block.dart';
 import 'package:crows_nest/models/task.dart';
 import 'package:crows_nest/models/execution_session.dart';
 import 'package:crows_nest/models/weather_tag.dart';
 import 'package:crows_nest/models/day_weather.dart';
 import 'package:crows_nest/models/blueprint.dart';
+import 'package:crows_nest/models/journal_note.dart';
 import 'package:crows_nest/services/database_service.dart';
 
 class CalendarProvider extends ChangeNotifier {
@@ -35,6 +37,9 @@ class CalendarProvider extends ChangeNotifier {
   List<TaskBlueprint> _taskBlueprints = [];
   List<TaskBlueprint> get taskBlueprints => _taskBlueprints;
 
+  List<JournalNote> _journalNotes = [];
+  List<JournalNote> get journalNotes => _journalNotes;
+
   CalendarProvider() {
     _loadAllData();
   }
@@ -47,7 +52,30 @@ class CalendarProvider extends ChangeNotifier {
     _weatherTags = await _db.getWeatherTags();
     _blockBlueprints = await _db.getBlockBlueprints();
     _taskBlueprints = await _db.getTaskBlueprints();
+    _journalNotes = await _db.getJournalNotesForDate(_currentDate);
     notifyListeners();
+  }
+
+  Future<void> addJournalNote(String content, {DateTime? timestamp, String tag = 'Log'}) async {
+    final noteTime = timestamp ?? DateTime.now();
+    final note = JournalNote(
+      date: _currentDate,
+      timestamp: noteTime,
+      content: content,
+      tag: tag,
+    );
+    await _db.insertJournalNote(note);
+    await _loadAllData();
+  }
+
+  Future<void> updateJournalNote(JournalNote note) async {
+    await _db.updateJournalNote(note);
+    await _loadAllData();
+  }
+
+  Future<void> deleteJournalNote(int id) async {
+    await _db.deleteJournalNote(id);
+    await _loadAllData();
   }
 
   void setDate(DateTime date) {
@@ -217,5 +245,19 @@ class CalendarProvider extends ChangeNotifier {
   Future<void> deleteTaskBlueprint(int id) async {
     await _db.deleteTaskBlueprint(id);
     await _loadAllData();
+  }
+
+  // Backup & Restore
+  Future<String> exportDataJsonString() async {
+    final map = await _db.exportAllDataAsJson();
+    return const JsonEncoder.withIndent('  ').convert(map);
+  }
+
+  Future<Map<String, int>> importDataJsonString(String jsonString, {bool replace = true}) async {
+    final Map<String, dynamic> map = jsonDecode(jsonString) as Map<String, dynamic>;
+    final summary = await _db.importAllDataFromJson(map, replaceExisting: replace);
+    await _loadAllData();
+    notifyListeners();
+    return summary;
   }
 }

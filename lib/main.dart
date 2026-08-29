@@ -4,14 +4,17 @@ import 'package:provider/provider.dart';
 import 'package:crows_nest/screens/app_shell.dart';
 import 'package:crows_nest/screens/home_screen.dart';
 import 'package:crows_nest/providers/calendar_provider.dart';
+import 'package:crows_nest/providers/theme_provider.dart';
 import 'package:crows_nest/screens/blueprint_manager_screen.dart';
 import 'package:crows_nest/screens/settings_screen.dart';
 import 'package:crows_nest/screens/calendar_screen.dart';
+import 'package:crows_nest/screens/sailors_almanac_screen.dart';
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => CalendarProvider()),
       ],
       child: const CrowsNestApp(),
@@ -45,6 +48,10 @@ final GoRouter _router = GoRouter(
           builder: (context, state) => const BlueprintManagerScreen(),
         ),
         GoRoute(
+          path: '/guide',
+          builder: (context, state) => const SailorsAlmanacScreen(),
+        ),
+        GoRoute(
           path: '/stats',
           builder: (context, state) => const Center(child: Text('Stats Screen')),
         ),
@@ -62,12 +69,12 @@ class CrowsNestApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp.router(
       title: "Crow's Nest",
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
-        useMaterial3: true,
-      ),
+      debugShowCheckedModeBanner: false,
+      theme: themeProvider.themeData,
       routerConfig: _router,
     );
   }

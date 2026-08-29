@@ -6,6 +6,7 @@ import 'package:crows_nest/models/execution_session.dart';
 import 'package:crows_nest/models/weather_tag.dart';
 import 'package:crows_nest/models/day_weather.dart';
 import 'package:crows_nest/models/blueprint.dart';
+import 'package:crows_nest/models/journal_note.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -25,7 +26,7 @@ class DatabaseService {
     final path = join(dbPath, 'crows_nest.db');
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -79,6 +80,17 @@ class DatabaseService {
           requiredTagIds TEXT NOT NULL,
           excludedTagIds TEXT NOT NULL,
           FOREIGN KEY (blockBlueprintId) REFERENCES block_blueprints (id) ON DELETE CASCADE
+        )
+      ''');
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE journal_notes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          timestamp TEXT NOT NULL,
+          content TEXT NOT NULL,
+          tag TEXT NOT NULL
         )
       ''');
     }
@@ -160,6 +172,43 @@ class DatabaseService {
         FOREIGN KEY (blockBlueprintId) REFERENCES block_blueprints (id) ON DELETE CASCADE
       )
     ''');
+    await db.execute('''
+      CREATE TABLE journal_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        content TEXT NOT NULL,
+        tag TEXT NOT NULL
+      )
+    ''');
+  }
+
+  // CRUD for Journal Notes (Captain's Log)
+  Future<int> insertJournalNote(JournalNote note) async {
+    final db = await database;
+    return await db.insert('journal_notes', note.toMap());
+  }
+
+  Future<List<JournalNote>> getJournalNotesForDate(DateTime date) async {
+    final db = await database;
+    final dateStr = date.toIso8601String().split('T')[0];
+    final maps = await db.query(
+      'journal_notes',
+      where: 'date LIKE ?',
+      whereArgs: ['$dateStr%'],
+      orderBy: 'timestamp ASC',
+    );
+    return List.generate(maps.length, (i) => JournalNote.fromMap(maps[i]));
+  }
+
+  Future<void> updateJournalNote(JournalNote note) async {
+    final db = await database;
+    await db.update('journal_notes', note.toMap(), where: 'id = ?', whereArgs: [note.id]);
+  }
+
+  Future<void> deleteJournalNote(int id) async {
+    final db = await database;
+    await db.delete('journal_notes', where: 'id = ?', whereArgs: [id]);
   }
 
   // CRUD for Blocks
@@ -328,7 +377,7 @@ class DatabaseService {
   Future<Set<String>> getChartedDatesInMonth(int year, int month) async {
     final db = await database;
     final m = month.toString().padLeft(2, '0');
-    final pattern = '\-\%';
+    final pattern = '$year-$m%';
     final maps = await db.query(
       'day_weather',
       columns: ['date'],
@@ -341,7 +390,7 @@ class DatabaseService {
   Future<Map<String, int>> getBlockCountsByDateInMonth(int year, int month) async {
     final db = await database;
     final m = month.toString().padLeft(2, '0');
-    final pattern = '\-\%';
+    final pattern = '$year-$m%';
     final maps = await db.query(
       'blocks',
       columns: ['date'],
@@ -354,5 +403,123 @@ class DatabaseService {
       counts[dateStr] = (counts[dateStr] ?? 0) + 1;
     }
     return counts;
+  }
+
+  // App Settings Persistence
+  Future<String?> getSetting(String key) async {
+    final db = await database;
+    await db.execute('CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    final maps = await db.query('app_settings', where: 'key = ?', whereArgs: [key]);
+    if (maps.isNotEmpty) {
+      return maps.first['value'] as String?;
+    }
+    return null;
+  }
+
+  Future<void> setSetting(String key, String value) async {
+    final db = await database;
+    await db.execute('CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    await db.insert(
+      'app_settings',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  // Complete JSON Data Export
+  Future<Map<String, dynamic>> exportAllDataAsJson() async {
+    final db = await database;
+    await db.execute('CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    
+    final blocks = await db.query('blocks');
+    final tasks = await db.query('tasks');
+    final executionSessions = await db.query('execution_sessions');
+    final weatherTags = await db.query('weather_tags');
+    final dayWeather = await db.query('day_weather');
+    final blockBlueprints = await db.query('block_blueprints');
+    final taskBlueprints = await db.query('task_blueprints');
+    final journalNotes = await db.query('journal_notes');
+    final appSettings = await db.query('app_settings');
+
+    return {
+      'app': 'crows_nest',
+      'version': 1,
+      'exported_at': DateTime.now().toIso8601String(),
+      'data': {
+        'blocks': blocks,
+        'tasks': tasks,
+        'execution_sessions': executionSessions,
+        'weather_tags': weatherTags,
+        'day_weather': dayWeather,
+        'block_blueprints': blockBlueprints,
+        'task_blueprints': taskBlueprints,
+        'journal_notes': journalNotes,
+        'app_settings': appSettings,
+      },
+    };
+  }
+
+  // Complete JSON Data Import
+  Future<Map<String, int>> importAllDataFromJson(Map<String, dynamic> jsonMap, {bool replaceExisting = true}) async {
+    final db = await database;
+    await db.execute('CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    
+    final Map<String, dynamic> data = jsonMap['data'] is Map<String, dynamic>
+        ? jsonMap['data'] as Map<String, dynamic>
+        : jsonMap;
+
+    final summary = <String, int>{
+      'blocks': 0,
+      'tasks': 0,
+      'execution_sessions': 0,
+      'weather_tags': 0,
+      'day_weather': 0,
+      'block_blueprints': 0,
+      'task_blueprints': 0,
+      'journal_notes': 0,
+      'app_settings': 0,
+    };
+
+    await db.transaction((txn) async {
+      if (replaceExisting) {
+        await txn.delete('blocks');
+        await txn.delete('tasks');
+        await txn.delete('execution_sessions');
+        await txn.delete('weather_tags');
+        await txn.delete('day_weather');
+        await txn.delete('block_blueprints');
+        await txn.delete('task_blueprints');
+        await txn.delete('journal_notes');
+      }
+
+      Future<int> insertRows(String table, dynamic rows) async {
+        if (rows is! List) return 0;
+        int count = 0;
+        for (var row in rows) {
+          if (row is Map) {
+            final Map<String, dynamic> cleanMap = Map<String, dynamic>.from(row);
+            await txn.insert(
+              table,
+              cleanMap,
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+            count++;
+          }
+        }
+        return count;
+      }
+
+      summary['blocks'] = await insertRows('blocks', data['blocks']);
+      summary['tasks'] = await insertRows('tasks', data['tasks']);
+      summary['execution_sessions'] = await insertRows('execution_sessions', data['execution_sessions']);
+      summary['weather_tags'] = await insertRows('weather_tags', data['weather_tags']);
+      summary['day_weather'] = await insertRows('day_weather', data['day_weather']);
+      summary['block_blueprints'] = await insertRows('block_blueprints', data['block_blueprints']);
+      summary['task_blueprints'] = await insertRows('task_blueprints', data['task_blueprints']);
+      summary['journal_notes'] = await insertRows('journal_notes', data['journal_notes']);
+      summary['app_settings'] = await insertRows('app_settings', data['app_settings']);
+    });
+
+    return summary;
   }
 }
