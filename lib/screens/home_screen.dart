@@ -10,6 +10,7 @@ import 'package:crows_nest/screens/add_task_dialog.dart';
 import 'package:crows_nest/screens/add_note_dialog.dart';
 import 'package:crows_nest/screens/weather_report_screen.dart';
 import 'package:crows_nest/screens/block_details_dialog.dart';
+import 'package:crows_nest/widgets/interactive_lookout_deck.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
@@ -485,60 +486,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCollapsibleBanner(ColorScheme colorScheme) {
     return AnimatedCrossFade(
-      firstChild: Container(
-        height: 110,
-        width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                'assets/images/crows_nest_placeholder.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: colorScheme.surfaceContainerHighest,
-                  child: const Center(child: Icon(Icons.image, size: 40)),
-                ),
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black.withOpacity(0.4),
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.4),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: IconButton(
-                  icon: const Icon(Icons.expand_less_rounded, color: Colors.white, size: 20),
-                  tooltip: 'Hide Banner',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => setState(() => _isBannerExpanded = false),
-                ),
-              ),
-            ],
-          ),
-        ),
+      firstChild: InteractiveLookoutDeck(
+        onToggleCollapse: () => setState(() => _isBannerExpanded = false),
       ),
       secondChild: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
@@ -557,10 +506,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.image_outlined, size: 13, color: colorScheme.primary),
+                    Icon(Icons.visibility_outlined, size: 13, color: colorScheme.primary),
                     const SizedBox(width: 4),
                     Text(
-                      'Show Banner',
+                      "Show Lookout Deck 🦜",
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.primary),
                     ),
                     const SizedBox(width: 2),

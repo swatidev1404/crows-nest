@@ -42,6 +42,11 @@ android {
             applicationId = "com.example.crows_nest.lab"
             resValue("string", "app_name", "Crows Nest Lab")
         }
+        create("kids") {
+            dimension = "environment"
+            applicationId = "com.example.crows_nest.kids"
+            resValue("string", "app_name", "Crows Nest Kids")
+        }
     }
 
     buildTypes {

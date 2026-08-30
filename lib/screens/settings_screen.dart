@@ -4,6 +4,7 @@ import 'package:crows_nest/providers/calendar_provider.dart';
 import 'package:crows_nest/providers/theme_provider.dart';
 import 'package:crows_nest/models/weather_tag.dart';
 import 'package:crows_nest/screens/export_import_dialog.dart';
+import 'package:crows_nest/services/sound_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -128,6 +129,44 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 12),
+
+              // Audio & Nautical Sound Effects Section
+              Consumer<SoundService>(
+                builder: (context, soundService, _) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.volume_up_rounded, color: colorScheme.primary, size: 22),
+                          const SizedBox(width: 8),
+                          Text('Audio & Sound Effects', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Card(
+                        child: SwitchListTile(
+                          title: const Text('Crow & Ocean Sounds 🦜🌊', style: TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: const Text('Crow caw and sea wave ambiance on app launch and interactive taps'),
+                          secondary: CircleAvatar(
+                            backgroundColor: colorScheme.primaryContainer,
+                            child: Icon(
+                              soundService.soundEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                              color: colorScheme.onPrimaryContainer,
+                              size: 20,
+                            ),
+                          ),
+                          value: soundService.soundEnabled,
+                          onChanged: (val) => soundService.setSoundEnabled(val),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                    ],
+                  );
+                },
+              ),
 
               // Weather Tags Section
               Row(

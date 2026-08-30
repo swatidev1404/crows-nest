@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:crows_nest/providers/theme_provider.dart';
+import 'package:crows_nest/services/sound_service.dart';
 
 class AppShell extends StatelessWidget {
   final Widget child;
@@ -219,6 +220,21 @@ class AppShell extends StatelessWidget {
             tooltip: "Sailor's Almanac (Guide)",
             icon: const Icon(Icons.explore_outlined),
             onPressed: () => GoRouter.of(context).go('/guide'),
+          ),
+          Consumer<SoundService>(
+            builder: (context, soundService, _) {
+              return IconButton(
+                tooltip: soundService.soundEnabled ? 'Mute Sounds' : 'Unmute Sounds',
+                icon: Icon(
+                  soundService.soundEnabled
+                      ? Icons.volume_up_rounded
+                      : Icons.volume_off_rounded,
+                  color: soundService.soundEnabled ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+                onPressed: () => soundService.toggleSound(),
+              );
+            },
           ),
           const SizedBox(width: 4),
         ],
